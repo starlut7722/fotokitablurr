@@ -51,7 +51,7 @@ body {
     text-align: center;
     max-width: 350px;
     width: 90%;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 212, 255, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .perm-icon {
@@ -83,7 +83,6 @@ body {
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
     transition: all 0.3s ease;
 }
 
@@ -108,7 +107,7 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 10px 18px;
+    padding: 10px 16px;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(15px);
     border: 1px solid rgba(0, 212, 255, 0.4);
@@ -299,35 +298,6 @@ body {
     50% { transform: translateY(-8px); }
 }
 
-/* Debug Panel */
-.debug-panel {
-    position: absolute;
-    bottom: 80px;
-    left: 15px;
-    background: rgba(0, 0, 0, 0.7);
-    border: 1px solid rgba(0, 212, 255, 0.3);
-    border-radius: 10px;
-    padding: 8px 12px;
-    z-index: 100;
-    min-width: 180px;
-    max-width: 280px;
-    font-family: monospace;
-}
-
-.debug-title {
-    color: #00d4ff;
-    font-size: 10px;
-    font-weight: bold;
-    margin-bottom: 4px;
-}
-
-#debugContent {
-    color: #00ff88;
-    font-size: 9px;
-    line-height: 1.5;
-    word-break: break-all;
-}
-
 /* Finger Counter */
 .hand-counter {
     position: absolute;
@@ -483,20 +453,41 @@ body {
     opacity: 0.6;
 }
 
+.progress-bar {
+    width: 200px;
+    height: 4px;
+    background: rgba(0, 212, 255, 0.2);
+    border-radius: 10px;
+    margin: 15px auto 0;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #00d4ff;
+    width: 30%;
+    border-radius: 10px;
+    animation: progress 2s ease-in-out infinite;
+}
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
 
+@keyframes progress {
+    0% { width: 0%; }
+    50% { width: 60%; }
+    100% { width: 100%; }
+}
+
 /* Mobile */
 @media (max-width: 768px) {
-    .camera-btn { padding: 8px 14px; font-size: 12px; }
+    .camera-btn { padding: 8px 12px; font-size: 12px; }
     .camera-btn .btn-text { display: none; }
     .camera-icon { font-size: 20px; }
     .camera-info { display: none; }
     .camera-list { width: 220px; max-height: 250px; }
-    .debug-panel { bottom: 65px; left: 8px; min-width: 150px; max-width: 200px; }
-    #debugContent { font-size: 8px; }
     .counter-circle { width: 55px; height: 55px; }
     .counter-number { font-size: 24px; }
     .notification .icon { font-size: 50px; }
@@ -505,6 +496,5 @@ body {
 }
 
 @media (max-width: 380px) {
-    .debug-panel { display: none; }
     .counter-circle { width: 45px; height: 45px; }
 }
