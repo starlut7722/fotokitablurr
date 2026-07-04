@@ -1,11 +1,19 @@
 // ============================================
 // GLOBAL VARIABLES
 // ============================================
-let hands, video, canvas, ctx, animationId, currentStream, currentDeviceId;
+let detector = null;
+let video = null;
+let canvas = null;
+let ctx = null;
+let animationId = null;
+let currentStream = null;
+let currentDeviceId = null;
 let availableCameras = [];
 let isBlurred = false;
 let twoFingerStartTime = null;
-let fpsCounter = 0, fps = 0, fpsUpdateTime = 0;
+let fpsCounter = 0;
+let fps = 0;
+let fpsUpdateTime = 0;
 let isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const THRESHOLD = 500;
 
@@ -26,53 +34,44 @@ const cameraList = document.getElementById('cameraList');
 const cameraNameDisplay = document.getElementById('cameraName');
 
 // ============================================
-// UPDATE LOADING TEXT
+// HELPER
 // ============================================
-function updateLoading(msg) {
-    console.log('[LOADING]', msg);
+function log(msg) {
+    console.log('[LOG]', msg);
     if (loadingText) loadingText.textContent = msg;
 }
 
 // ============================================
-// CAMERA FUNCTIONS
+// CAMERA
 // ============================================
 async function getCameras() {
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         availableCameras = devices.filter(d => d.kind === 'videoinput');
-        console.log('📷 Kamera ditemukan:', availableCameras.length);
         renderCamList();
     } catch (e) {
-        console.error('Error getCameras:', e);
+        console.error(e);
     }
 }
 
 function renderCamList() {
     if (!cameraList) return;
     cameraList.innerHTML = '';
-    
     availableCameras.forEach((cam, i) => {
         const d = document.createElement('div');
         d.className = 'camera-option' + (cam.deviceId === currentDeviceId ? ' active' : '');
-        d.innerHTML = `<span class="cam-icon">📷</span><div class="cam-info"><div class="cam-name">${cam.label || 'Kamera ' + (i+1)}</div></div>`;
-        d.onclick = () => switchCam(cam.deviceId);
+        d.innerHTML = '<span class="cam-icon">📷</span><div class="cam-info"><div class="cam-name">' + (cam.label || 'Kamera ' + (i+1)) + '</div></div>';
+        d.onclick = function() { switchCam(cam.deviceId); };
         cameraList.appendChild(d);
     });
-    
-    const r = document.createElement('div');
-    r.className = 'camera-option';
-    r.style.borderTop = '1px solid rgba(0,212,255,0.2)';
-    r.innerHTML = '<span class="cam-icon">🔄</span><div class="cam-info"><div class="cam-name">Refresh</div></div>';
-    r.onclick = (e) => { e.stopPropagation(); getCameras(); };
-    cameraList.appendChild(r);
 }
 
-switchCameraBtn?.addEventListener('click', (e) => {
+switchCameraBtn.onclick = function(e) {
     e.stopPropagation();
     cameraList.classList.toggle('show');
-});
+};
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', function(e) {
     if (cameraList && !cameraList.contains(e.target) && e.target !== switchCameraBtn) {
         cameraList.classList.remove('show');
     }
@@ -80,180 +79,124 @@ document.addEventListener('click', (e) => {
 
 async function switchCam(id) {
     try {
-        if (currentStream) currentStream.getTracks().forEach(t => t.stop());
-        
+        if (currentStream) currentStream.getTracks().forEach(function(t) { t.stop(); });
         currentStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                deviceId: { exact: id },
-                width: { ideal: isMobile ? 720 : 1280 },
-                height: { ideal: isMobile ? 480 : 720 }
-            }
+            video: { deviceId: { exact: id }, width: { ideal: isMobile ? 720 : 1280 }, height: { ideal: isMobile ? 480 : 720 } }
         });
-        
         video.srcObject = currentStream;
         currentDeviceId = id;
         updateCamInfo(id);
         renderCamList();
         cameraList.classList.remove('show');
-        if (statusDot) statusDot.classList.remove('warning');
-        console.log('✅ Kamera diganti');
+        statusDot.classList.remove('warning');
     } catch (e) {
-        console.error('Gagal ganti kamera:', e);
+        console.error(e);
     }
 }
 
 function updateCamInfo(id) {
-    const cam = availableCameras.find(c => c.deviceId === id);
+    var cam = availableCameras.find(function(c) { return c.deviceId === id; });
     if (cam && cameraNameDisplay) {
         cameraNameDisplay.textContent = (cam.label || 'Kamera').slice(0, 25);
     }
 }
 
 // ============================================
-// FINGER COUNTING (MediaPipe style)
+// FINGER COUNTING
 // ============================================
-function countFingers(landmarks) {
-    if (!landmarks || landmarks.length < 21) return 0;
-    
-    let count = 0;
-    
-    // Thumb: bandingkan x dari tip (4) dan IP joint (3)
-    if (landmarks[4].x < landmarks[3].x) count++;
-    
-    // Index: tip (8) harus di atas PIP joint (6)
-    if (landmarks[8].y < landmarks[6].y) count++;
-    
-    // Middle: tip (12) harus di atas PIP joint (10)
-    if (landmarks[12].y < landmarks[10].y) count++;
-    
-    // Ring: tip (16) harus di atas PIP joint (14)
-    if (landmarks[16].y < landmarks[14].y) count++;
-    
-    // Pinky: tip (20) harus di atas PIP joint (18)
-    if (landmarks[20].y < landmarks[18].y) count++;
-    
+function countFingers(keypoints) {
+    if (!keypoints || keypoints.length < 21) return 0;
+    var count = 0;
+    if (keypoints[4].x < keypoints[3].x) count++;
+    if (keypoints[8].y < keypoints[6].y) count++;
+    if (keypoints[12].y < keypoints[10].y) count++;
+    if (keypoints[16].y < keypoints[14].y) count++;
+    if (keypoints[20].y < keypoints[18].y) count++;
     return count;
 }
 
 // ============================================
 // DRAWING
 // ============================================
-function drawHand(landmarks) {
-    if (!ctx || !landmarks) return;
-    
-    const connections = [
-        [0,1],[1,2],[2,3],[3,4],
-        [0,5],[5,6],[6,7],[7,8],
-        [0,9],[9,10],[10,11],[11,12],
-        [0,13],[13,14],[14,15],[15,16],
-        [0,17],[17,18],[18,19],[19,20],
-        [5,9],[9,13],[13,17]
-    ];
-    
+function drawHand(keypoints) {
+    if (!ctx || !keypoints) return;
+    var conn = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
     ctx.strokeStyle = '#00d4ff';
     ctx.lineWidth = 2;
     ctx.shadowColor = '#00d4ff';
     ctx.shadowBlur = 10;
-    
-    connections.forEach(([a, b]) => {
-        if (landmarks[a] && landmarks[b]) {
+    conn.forEach(function(pair) {
+        var a = pair[0], b = pair[1];
+        if (keypoints[a] && keypoints[b]) {
             ctx.beginPath();
-            ctx.moveTo(landmarks[a].x * canvas.width, landmarks[a].y * canvas.height);
-            ctx.lineTo(landmarks[b].x * canvas.width, landmarks[b].y * canvas.height);
+            ctx.moveTo(keypoints[a].x, keypoints[a].y);
+            ctx.lineTo(keypoints[b].x, keypoints[b].y);
             ctx.stroke();
         }
     });
-    
-    landmarks.forEach((p, i) => {
-        const x = p.x * canvas.width;
-        const y = p.y * canvas.height;
-        
-        // Finger tips warna kuning
-        if ([4, 8, 12, 16, 20].includes(i)) {
-            ctx.fillStyle = '#ffcc00';
-            ctx.shadowColor = '#ffcc00';
-        } else {
-            ctx.fillStyle = '#00d4ff';
-            ctx.shadowColor = '#00d4ff';
-        }
-        
+    keypoints.forEach(function(p, i) {
+        if (!p) return;
+        ctx.fillStyle = [4,8,12,16,20].indexOf(i) >= 0 ? '#ffcc00' : '#00d4ff';
+        ctx.shadowColor = ctx.fillStyle;
         ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
         ctx.fill();
-        
         ctx.fillStyle = '#fff';
         ctx.shadowBlur = 0;
         ctx.beginPath();
-        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
         ctx.fill();
     });
-    
     ctx.shadowBlur = 0;
 }
 
 // ============================================
-// MAIN DETECTION LOOP
+// MAIN LOOP
 // ============================================
 async function detectHands() {
-    if (!hands || !video || video.readyState < 2) {
+    if (!detector || !video || video.readyState < 2) {
         animationId = requestAnimationFrame(detectHands);
         return;
     }
-    
-    // FPS
-    const now = performance.now();
+    var now = performance.now();
     fpsCounter++;
     if (now - fpsUpdateTime >= 1000) {
         fps = Math.round((fpsCounter * 1000) / (now - fpsUpdateTime));
-        if (fpsValue) fpsValue.textContent = fps;
+        fpsValue.textContent = fps;
         fpsCounter = 0;
         fpsUpdateTime = now;
     }
-    
     try {
-        const results = await hands.send({ image: video });
-        
-        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        let totalFingers = 0;
-        
-        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            results.multiHandLandmarks.forEach(landmarks => {
-                drawHand(landmarks);
-                totalFingers += countFingers(landmarks);
+        var hands = await detector.estimateHands(video);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var totalFingers = 0;
+        if (hands.length > 0) {
+            hands.forEach(function(hand) {
+                drawHand(hand.keypoints);
+                totalFingers += countFingers(hand.keypoints);
             });
         }
-        
         updateUI(totalFingers);
-        
     } catch (e) {
-        console.error('Detection error:', e);
+        console.error(e);
     }
-    
     animationId = requestAnimationFrame(detectHands);
 }
 
 // ============================================
-// UI UPDATE
+// UI
 // ============================================
 function updateUI(count) {
-    if (counterNumber) counterNumber.textContent = count;
-    
-    if (counterCircle) {
-        if (count === 2) {
-            counterCircle.classList.add('active');
-        } else {
-            counterCircle.classList.remove('active');
-        }
-    }
-    
+    counterNumber.textContent = count;
     if (count === 2) {
+        counterCircle.classList.add('active');
         if (!twoFingerStartTime) twoFingerStartTime = performance.now();
         if (performance.now() - twoFingerStartTime >= THRESHOLD && !isBlurred) {
             applyBlur();
         }
     } else {
+        counterCircle.classList.remove('active');
         twoFingerStartTime = null;
         if (isBlurred) removeBlur();
     }
@@ -261,153 +204,109 @@ function updateUI(count) {
 
 function applyBlur() {
     isBlurred = true;
-    if (blurOverlay) blurOverlay.classList.add('active');
-    if (notification) setTimeout(() => notification.classList.add('show'), 100);
-    if (statusText) statusText.textContent = '2 Jari! ✌️';
-    if (statusDot) statusDot.classList.add('warning');
+    blurOverlay.classList.add('active');
+    setTimeout(function() { notification.classList.add('show'); }, 100);
+    statusText.textContent = '2 Jari! ✌️';
+    statusDot.classList.add('warning');
 }
 
 function removeBlur() {
     isBlurred = false;
-    if (blurOverlay) blurOverlay.classList.remove('active');
-    if (notification) notification.classList.remove('show');
-    if (statusText) statusText.textContent = 'Mendeteksi...';
-    if (statusDot) statusDot.classList.remove('warning');
+    blurOverlay.classList.remove('active');
+    notification.classList.remove('show');
+    statusText.textContent = 'Mendeteksi...';
+    statusDot.classList.remove('warning');
 }
 
 // ============================================
-// INIT - Pakai MediaPipe Hands langsung
+// INIT
 // ============================================
 async function init() {
     try {
-        updateLoading('Mengakses kamera...');
-        
+        log('Mengakses kamera...');
         video = document.getElementById('webcam');
         canvas = document.getElementById('outputCanvas');
         ctx = canvas.getContext('2d');
         
         await getCameras();
         
-        // Request camera
         currentStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                width: { ideal: isMobile ? 720 : 1280 },
-                height: { ideal: isMobile ? 480 : 720 },
-                facingMode: isMobile ? 'environment' : 'user'
-            }
+            video: { width: { ideal: isMobile ? 720 : 1280 }, height: { ideal: isMobile ? 480 : 720 }, facingMode: isMobile ? 'environment' : 'user' }
         });
         
         video.srcObject = currentStream;
-        
-        const track = currentStream.getVideoTracks()[0];
+        var track = currentStream.getVideoTracks()[0];
         if (track) currentDeviceId = track.getSettings().deviceId;
-        
         if (availableCameras.length === 0) await getCameras();
         updateCamInfo(currentDeviceId);
         renderCamList();
         
-        // Wait for video
-        updateLoading('Menunggu video...');
-        await new Promise((resolve, reject) => {
-            video.onloadedmetadata = () => {
+        log('Menunggu video...');
+        await new Promise(function(resolve, reject) {
+            video.onloadedmetadata = function() {
                 video.play().then(resolve).catch(reject);
             };
-            setTimeout(() => reject(new Error('Timeout video')), 8000);
+            setTimeout(function() { reject(new Error('Timeout')); }, 8000);
         });
         
-        // Canvas size
-        function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        window.addEventListener('resize', function() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-        }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        });
         
-        // Load MediaPipe Hands
-        updateLoading('Memuat AI Model...');
-        
-        hands = new Hands({
-            locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`;
+        log('Memuat AI Model...');
+        detector = await handPoseDetection.createDetector(
+            handPoseDetection.SupportedModels.MediaPipeHands,
+            {
+                runtime: 'tfjs',
+                modelType: 'full',
+                maxHands: 2,
+                solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240'
             }
-        });
+        );
         
-        hands.setOptions({
-            maxNumHands: 2,
-            modelComplexity: isMobile ? 0 : 1,
-            minDetectionConfidence: 0.7,
-            minTrackingConfidence: 0.5
-        });
-        
-        hands.onResults((results) => {
-            // This is handled in detectHands loop
-        });
-        
-        updateLoading('Selesai!');
-        console.log('✅ Model siap!');
-        
-        // Hide loading
-        setTimeout(() => {
-            if (loadingScreen) {
-                loadingScreen.classList.add('hidden');
-                setTimeout(() => {
-                    if (loadingScreen) loadingScreen.style.display = 'none';
-                }, 500);
-            }
+        log('Selesai!');
+        setTimeout(function() {
+            loadingScreen.classList.add('hidden');
+            setTimeout(function() { loadingScreen.style.display = 'none'; }, 500);
         }, 300);
         
-        if (statusText) statusText.textContent = 'Mendeteksi...';
-        if (statusDot) statusDot.classList.remove('warning');
+        statusText.textContent = 'Mendeteksi...';
+        statusDot.classList.remove('warning');
         
-        navigator.mediaDevices.addEventListener('devicechange', async () => {
-            await getCameras();
-            updateCamInfo(currentDeviceId);
-        });
-        
-        // START!
         detectHands();
         
     } catch (err) {
-        console.error('Init error:', err);
-        updateLoading('Error: ' + err.message);
-        
+        console.error('Error:', err);
+        log('Error: ' + err.message);
         if (loadingScreen) {
-            const content = loadingScreen.querySelector('.loading-content');
-            if (content) {
-                content.innerHTML = `
-                    <p style="color:#ff4444;">Error: ${err.message}</p>
-                    <button onclick="location.reload()" style="margin-top:15px;padding:10px 20px;background:#00d4ff;border:none;border-radius:20px;color:#000;font-weight:bold;cursor:pointer;">Coba Lagi</button>
-                `;
-            }
+            loadingScreen.innerHTML = '<div class="loading-content"><p style="color:#ff4444;">Error: ' + err.message + '</p><button onclick="location.reload()" style="margin-top:15px;padding:10px 20px;background:#00d4ff;border:none;border-radius:20px;color:#000;font-weight:bold;cursor:pointer;">Coba Lagi</button></div>';
         }
     }
 }
 
 // ============================================
-// EVENT LISTENERS
+// EVENTS
 // ============================================
-document.addEventListener('visibilitychange', () => {
+document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
         if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
     } else {
-        if (!animationId) {
-            fpsCounter = 0;
-            fpsUpdateTime = performance.now();
-            detectHands();
-        }
+        if (!animationId) { fpsCounter = 0; fpsUpdateTime = performance.now(); detectHands(); }
     }
 });
 
-window.addEventListener('beforeunload', () => {
+window.addEventListener('beforeunload', function() {
     if (animationId) cancelAnimationFrame(animationId);
-    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
-    if (hands) hands.close();
+    if (currentStream) currentStream.getTracks().forEach(function(t) { t.stop(); });
 });
 
 // ============================================
-// START!
+// START
 // ============================================
-window.addEventListener('load', () => {
+window.addEventListener('load', function() {
     console.log('🚀 Starting...');
     init();
 });
