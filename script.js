@@ -1,7 +1,7 @@
 // ============================================
 // GLOBAL VARIABLES
 // ============================================
-let model, video, canvas, ctx, animationId, currentStream, currentDeviceId;
+let hands, video, canvas, ctx, animationId, currentStream, currentDeviceId;
 let availableCameras = [];
 let isBlurred = false;
 let twoFingerStartTime = null;
@@ -24,31 +24,13 @@ const loadingText = document.getElementById('loadingText');
 const switchCameraBtn = document.getElementById('switchCameraBtn');
 const cameraList = document.getElementById('cameraList');
 const cameraNameDisplay = document.getElementById('cameraName');
-const permissionOverlay = document.getElementById('permissionOverlay');
-const permBtn = document.getElementById('permBtn');
 
 // ============================================
 // UPDATE LOADING TEXT
 // ============================================
 function updateLoading(msg) {
-    console.log(msg);
+    console.log('[LOADING]', msg);
     if (loadingText) loadingText.textContent = msg;
-}
-
-// ============================================
-// PERMISSION BUTTON
-// ============================================
-if (permBtn) {
-    permBtn.onclick = async () => {
-        try {
-            const s = await navigator.mediaDevices.getUserMedia({ video: true });
-            s.getTracks().forEach(t => t.stop());
-            permissionOverlay.classList.add('hidden');
-            init();
-        } catch (e) {
-            alert('Gagal akses kamera: ' + e.message);
-        }
-    };
 }
 
 // ============================================
@@ -58,9 +40,10 @@ async function getCameras() {
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         availableCameras = devices.filter(d => d.kind === 'videoinput');
+        console.log('📷 Kamera ditemukan:', availableCameras.length);
         renderCamList();
     } catch (e) {
-        console.error(e);
+        console.error('Error getCameras:', e);
     }
 }
 
@@ -76,7 +59,6 @@ function renderCamList() {
         cameraList.appendChild(d);
     });
     
-    // Refresh button
     const r = document.createElement('div');
     r.className = 'camera-option';
     r.style.borderTop = '1px solid rgba(0,212,255,0.2)';
@@ -85,7 +67,6 @@ function renderCamList() {
     cameraList.appendChild(r);
 }
 
-// Toggle camera list
 switchCameraBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     cameraList.classList.toggle('show');
@@ -115,8 +96,9 @@ async function switchCam(id) {
         renderCamList();
         cameraList.classList.remove('show');
         if (statusDot) statusDot.classList.remove('warning');
+        console.log('✅ Kamera diganti');
     } catch (e) {
-        alert('Gagal ganti kamera');
+        console.error('Gagal ganti kamera:', e);
     }
 }
 
@@ -128,39 +110,38 @@ function updateCamInfo(id) {
 }
 
 // ============================================
-// FINGER COUNTING
+// FINGER COUNTING (MediaPipe style)
 // ============================================
-function countFingers(kp) {
-    if (!kp || kp.length < 21) return 0;
+function countFingers(landmarks) {
+    if (!landmarks || landmarks.length < 21) return 0;
     
-    let c = 0;
-    const isRight = kp[4].x < kp[3].x;
+    let count = 0;
     
-    // Thumb
-    if (isRight) {
-        if (kp[4].x < kp[3].x - 10) c++;
-    } else {
-        if (kp[4].x > kp[3].x + 10) c++;
-    }
+    // Thumb: bandingkan x dari tip (4) dan IP joint (3)
+    if (landmarks[4].x < landmarks[3].x) count++;
     
-    // Other fingers
-    if (kp[8].y < kp[6].y - 5) c++;
-    if (kp[12].y < kp[10].y - 5) c++;
-    if (kp[16].y < kp[14].y - 5) c++;
-    if (kp[20].y < kp[18].y - 5) c++;
+    // Index: tip (8) harus di atas PIP joint (6)
+    if (landmarks[8].y < landmarks[6].y) count++;
     
-    return c;
+    // Middle: tip (12) harus di atas PIP joint (10)
+    if (landmarks[12].y < landmarks[10].y) count++;
+    
+    // Ring: tip (16) harus di atas PIP joint (14)
+    if (landmarks[16].y < landmarks[14].y) count++;
+    
+    // Pinky: tip (20) harus di atas PIP joint (18)
+    if (landmarks[20].y < landmarks[18].y) count++;
+    
+    return count;
 }
 
 // ============================================
 // DRAWING
 // ============================================
-function drawHand(hand) {
-    if (!ctx) return;
-    const kp = hand.keypoints;
-    if (!kp || kp.length === 0) return;
+function drawHand(landmarks) {
+    if (!ctx || !landmarks) return;
     
-    const conn = [
+    const connections = [
         [0,1],[1,2],[2,3],[3,4],
         [0,5],[5,6],[6,7],[7,8],
         [0,9],[9,10],[10,11],[11,12],
@@ -170,34 +151,41 @@ function drawHand(hand) {
     ];
     
     ctx.strokeStyle = '#00d4ff';
-    ctx.lineWidth = isMobile ? 2 : 3;
+    ctx.lineWidth = 2;
     ctx.shadowColor = '#00d4ff';
-    ctx.shadowBlur = isMobile ? 8 : 15;
+    ctx.shadowBlur = 10;
     
-    conn.forEach(([a, b]) => {
-        if (kp[a] && kp[b]) {
+    connections.forEach(([a, b]) => {
+        if (landmarks[a] && landmarks[b]) {
             ctx.beginPath();
-            ctx.moveTo(kp[a].x, kp[a].y);
-            ctx.lineTo(kp[b].x, kp[b].y);
+            ctx.moveTo(landmarks[a].x * canvas.width, landmarks[a].y * canvas.height);
+            ctx.lineTo(landmarks[b].x * canvas.width, landmarks[b].y * canvas.height);
             ctx.stroke();
         }
     });
     
-    kp.forEach((p, i) => {
-        if (!p) return;
+    landmarks.forEach((p, i) => {
+        const x = p.x * canvas.width;
+        const y = p.y * canvas.height;
         
-        ctx.fillStyle = [4,8,12,16,20].includes(i) ? '#ffcc00' : '#00d4ff';
-        ctx.shadowColor = ctx.fillStyle;
-        ctx.shadowBlur = isMobile ? 8 : 15;
+        // Finger tips warna kuning
+        if ([4, 8, 12, 16, 20].includes(i)) {
+            ctx.fillStyle = '#ffcc00';
+            ctx.shadowColor = '#ffcc00';
+        } else {
+            ctx.fillStyle = '#00d4ff';
+            ctx.shadowColor = '#00d4ff';
+        }
         
+        ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, isMobile ? 4 : 6, 0, Math.PI * 2);
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.fillStyle = '#fff';
         ctx.shadowBlur = 0;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, isMobile ? 2 : 3, 0, Math.PI * 2);
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
         ctx.fill();
     });
     
@@ -208,7 +196,7 @@ function drawHand(hand) {
 // MAIN DETECTION LOOP
 // ============================================
 async function detectHands() {
-    if (!model || !video || video.readyState < 2) {
+    if (!hands || !video || video.readyState < 2) {
         animationId = requestAnimationFrame(detectHands);
         return;
     }
@@ -224,23 +212,23 @@ async function detectHands() {
     }
     
     try {
-        const hands = await model.estimateHands(video);
+        const results = await hands.send({ image: video });
         
         if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         let totalFingers = 0;
         
-        if (hands.length > 0) {
-            hands.forEach(hand => {
-                drawHand(hand);
-                totalFingers += countFingers(hand.keypoints);
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            results.multiHandLandmarks.forEach(landmarks => {
+                drawHand(landmarks);
+                totalFingers += countFingers(landmarks);
             });
         }
         
         updateUI(totalFingers);
         
     } catch (e) {
-        // Silent error
+        console.error('Detection error:', e);
     }
     
     animationId = requestAnimationFrame(detectHands);
@@ -288,7 +276,7 @@ function removeBlur() {
 }
 
 // ============================================
-// INIT
+// INIT - Pakai MediaPipe Hands langsung
 // ============================================
 async function init() {
     try {
@@ -324,7 +312,7 @@ async function init() {
             video.onloadedmetadata = () => {
                 video.play().then(resolve).catch(reject);
             };
-            setTimeout(() => reject(new Error('Timeout')), 8000);
+            setTimeout(() => reject(new Error('Timeout video')), 8000);
         });
         
         // Canvas size
@@ -335,20 +323,28 @@ async function init() {
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         
-        // Load AI Model
+        // Load MediaPipe Hands
         updateLoading('Memuat AI Model...');
         
-        model = await handPoseDetection.createDetector(
-            handPoseDetection.SupportedModels.MediaPipeHands,
-            {
-                runtime: 'tfjs',
-                modelType: 'lite',
-                maxHands: 2,
-                solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240'
+        hands = new Hands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`;
             }
-        );
+        });
+        
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: isMobile ? 0 : 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.5
+        });
+        
+        hands.onResults((results) => {
+            // This is handled in detectHands loop
+        });
         
         updateLoading('Selesai!');
+        console.log('✅ Model siap!');
         
         // Hide loading
         setTimeout(() => {
@@ -358,12 +354,11 @@ async function init() {
                     if (loadingScreen) loadingScreen.style.display = 'none';
                 }, 500);
             }
-        }, 500);
+        }, 300);
         
         if (statusText) statusText.textContent = 'Mendeteksi...';
         if (statusDot) statusDot.classList.remove('warning');
         
-        // Listen for device changes
         navigator.mediaDevices.addEventListener('devicechange', async () => {
             await getCameras();
             updateCamInfo(currentDeviceId);
@@ -376,10 +371,14 @@ async function init() {
         console.error('Init error:', err);
         updateLoading('Error: ' + err.message);
         
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-            if (permissionOverlay) permissionOverlay.classList.remove('hidden');
-        } else {
-            alert('Error: ' + err.message + '\n\nRefresh halaman untuk mencoba lagi.');
+        if (loadingScreen) {
+            const content = loadingScreen.querySelector('.loading-content');
+            if (content) {
+                content.innerHTML = `
+                    <p style="color:#ff4444;">Error: ${err.message}</p>
+                    <button onclick="location.reload()" style="margin-top:15px;padding:10px 20px;background:#00d4ff;border:none;border-radius:20px;color:#000;font-weight:bold;cursor:pointer;">Coba Lagi</button>
+                `;
+            }
         }
     }
 }
@@ -389,10 +388,7 @@ async function init() {
 // ============================================
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-        if (animationId) {
-            cancelAnimationFrame(animationId);
-            animationId = null;
-        }
+        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
     } else {
         if (!animationId) {
             fpsCounter = 0;
@@ -405,24 +401,13 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('beforeunload', () => {
     if (animationId) cancelAnimationFrame(animationId);
     if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+    if (hands) hands.close();
 });
 
 // ============================================
-// START
+// START!
 // ============================================
 window.addEventListener('load', () => {
-    // Check camera permission first
-    if (navigator.permissions) {
-        navigator.permissions.query({ name: 'camera' }).then(result => {
-            if (result.state === 'denied') {
-                if (permissionOverlay) permissionOverlay.classList.remove('hidden');
-            } else {
-                init();
-            }
-        }).catch(() => {
-            init();
-        });
-    } else {
-        init();
-    }
+    console.log('🚀 Starting...');
+    init();
 });
