@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>2 Jari Detection</title>
+    <title>2 Jari Detection - Fast</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="camera-selector" id="cameraSelector">
             <button class="camera-btn" id="switchCameraBtn">
                 <span class="camera-icon">📷</span>
-                <span class="btn-text">Ganti Kamera</span>
+                <span class="btn-text">Ganti</span>
             </button>
             <div class="camera-list" id="cameraList"></div>
         </div>
@@ -32,13 +32,8 @@
             </div>
         </div>
 
-        <div class="debug-panel" id="debugPanel">
-            <div class="debug-title">DEBUG</div>
-            <div id="debugContent">Menunggu...</div>
-        </div>
-
         <div class="camera-info" id="cameraInfo">
-            <span class="camera-name" id="cameraName">Kamera</span>
+            <span id="cameraName">Kamera</span>
         </div>
 
         <div class="hand-counter" id="handCounter">
@@ -56,12 +51,12 @@
             <div class="fps-display"><span id="fpsValue">0</span> FPS</div>
         </div>
 
-        <div class="permission-overlay" id="permissionOverlay">
+        <div class="permission-overlay hidden" id="permissionOverlay">
             <div class="permission-card">
                 <span class="perm-icon">🎥</span>
                 <h2>Izinkan Kamera</h2>
-                <p>Website ini membutuhkan akses kamera untuk mendeteksi jari</p>
-                <button class="perm-btn" id="permBtn">🔓 Izinkan Akses Kamera</button>
+                <p>Website ini membutuhkan akses kamera</p>
+                <button class="perm-btn" id="permBtn">Izinkan Kamera</button>
             </div>
         </div>
     </div>
@@ -69,13 +64,16 @@
     <div class="loading-screen" id="loadingScreen">
         <div class="loading-content">
             <div class="loading-spinner"></div>
-            <p>Memuat AI Model...</p>
-            <p class="loading-sub">Finger Detection v2.0</p>
+            <p id="loadingText">Memuat...</p>
+            <p class="loading-sub">Finger Detection v3</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection@2.0.0/dist/hand-pose-detection.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection@0.0.7/dist/hand-pose-detection.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
