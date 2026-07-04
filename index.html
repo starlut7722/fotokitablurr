@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>2 Jari Detection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Camera Selector -->
+        <div class="camera-selector" id="cameraSelector">
+            <button class="camera-btn" id="switchCameraBtn">
+                <span class="camera-icon">📷</span>
+                <span class="btn-text">Ganti Kamera</span>
+            </button>
+            <div class="camera-list" id="cameraList"></div>
+        </div>
+
+        <!-- Webcam Container -->
+        <div class="webcam-container" id="webcamContainer">
+            <video id="webcam" autoplay playsinline muted></video>
+            <canvas id="outputCanvas"></canvas>
+            
+            <div class="blur-overlay" id="blurOverlay">
+                <div class="notification" id="notification">
+                    <span class="icon">✌️</span>
+                    <span class="text">2 Jari Terdeteksi!</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-panel" id="debugPanel">
+            <div class="debug-title">DEBUG</div>
+            <div id="debugContent">Menunggu...</div>
+        </div>
+
+        <div class="camera-info" id="cameraInfo">
+            <span class="camera-name" id="cameraName">Kamera</span>
+        </div>
+
+        <div class="hand-counter" id="handCounter">
+            <div class="counter-circle">
+                <span class="counter-number" id="counterNumber">0</span>
+                <span class="counter-label">Jari</span>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-text" id="statusText">Memulai...</span>
+            </div>
+            <div class="fps-display"><span id="fpsValue">0</span> FPS</div>
+        </div>
+
+        <div class="permission-overlay" id="permissionOverlay">
+            <div class="permission-card">
+                <span class="perm-icon">🎥</span>
+                <h2>Izinkan Kamera</h2>
+                <p>Website ini membutuhkan akses kamera untuk mendeteksi jari</p>
+                <button class="perm-btn" id="permBtn">🔓 Izinkan Akses Kamera</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>Memuat AI Model...</p>
+            <p class="loading-sub">Finger Detection v2.0</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection@2.0.0/dist/hand-pose-detection.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

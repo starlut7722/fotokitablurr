@@ -1,0 +1,510 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #000;
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+    width: 100vw;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+}
+
+/* Permission Overlay */
+.permission-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    backdrop-filter: blur(10px);
+}
+
+.permission-overlay.hidden {
+    display: none;
+}
+
+.permission-card {
+    background: linear-gradient(145deg, #1a1a3a, #0a0a1a);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    border-radius: 20px;
+    padding: 30px 25px;
+    text-align: center;
+    max-width: 350px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 212, 255, 0.1);
+}
+
+.perm-icon {
+    font-size: 60px;
+    display: block;
+    margin-bottom: 15px;
+    animation: bounce 2s infinite;
+}
+
+.permission-card h2 {
+    color: #00d4ff;
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.permission-card p {
+    color: #7fd4ff;
+    font-size: 14px;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
+.perm-btn {
+    padding: 14px 30px;
+    background: #00d4ff;
+    color: #000;
+    border: none;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+    transition: all 0.3s ease;
+}
+
+.perm-btn:active {
+    transform: scale(0.95);
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+/* Camera Selector */
+.camera-selector {
+    position: absolute;
+    top: max(15px, env(safe-area-inset-top));
+    left: max(15px, env(safe-area-inset-left));
+    z-index: 100;
+}
+
+.camera-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    border-radius: 50px;
+    color: #00d4ff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.camera-btn:active {
+    background: rgba(0, 212, 255, 0.3);
+    transform: scale(0.95);
+}
+
+.camera-icon {
+    font-size: 18px;
+}
+
+.camera-list {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 260px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: rgba(10, 10, 30, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 15px;
+    padding: 8px;
+    display: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    z-index: 101;
+}
+
+.camera-list.show {
+    display: block;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.camera-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: #7fd4ff;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.camera-option:active {
+    background: rgba(0, 212, 255, 0.2);
+}
+
+.camera-option.active {
+    background: rgba(0, 212, 255, 0.15);
+    border: 1px solid rgba(0, 212, 255, 0.4);
+}
+
+.camera-option .cam-icon {
+    font-size: 18px;
+}
+
+.camera-option .cam-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.camera-option .cam-name {
+    font-weight: 600;
+    color: #00d4ff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Camera Info */
+.camera-info {
+    position: absolute;
+    top: max(15px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 16px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    border-radius: 50px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    z-index: 100;
+    font-size: 11px;
+    color: #7fd4ff;
+    max-width: 60%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Webcam */
+.webcam-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: #000;
+}
+
+#webcam {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 100%;
+    object-fit: cover;
+}
+
+#outputCanvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 100%;
+    pointer-events: none;
+}
+
+/* Blur Overlay */
+.blur-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    backdrop-filter: blur(0px);
+    background: rgba(0, 20, 40, 0);
+    transition: all 0.5s ease;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.blur-overlay.active {
+    backdrop-filter: blur(25px);
+    background: rgba(0, 20, 40, 0.4);
+}
+
+.notification {
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.5s ease;
+    padding: 20px;
+}
+
+.notification.show {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.notification .icon {
+    font-size: 60px;
+    animation: float 2s ease-in-out infinite;
+}
+
+.notification .text {
+    font-size: 28px;
+    font-weight: 700;
+    color: #00d4ff;
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.8), 0 0 40px rgba(0, 212, 255, 0.4);
+    letter-spacing: 2px;
+    margin-top: 10px;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+/* Debug Panel */
+.debug-panel {
+    position: absolute;
+    bottom: 80px;
+    left: 15px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 10px;
+    padding: 8px 12px;
+    z-index: 100;
+    min-width: 180px;
+    max-width: 280px;
+    font-family: monospace;
+}
+
+.debug-title {
+    color: #00d4ff;
+    font-size: 10px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+#debugContent {
+    color: #00ff88;
+    font-size: 9px;
+    line-height: 1.5;
+    word-break: break-all;
+}
+
+/* Finger Counter */
+.hand-counter {
+    position: absolute;
+    top: max(15px, env(safe-area-inset-top));
+    right: max(15px, env(safe-area-inset-right));
+    z-index: 100;
+}
+
+.counter-circle {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(0, 212, 255, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.counter-circle.active {
+    border-color: #00d4ff;
+    box-shadow: 0 4px 25px rgba(0, 212, 255, 0.6);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.counter-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: #00d4ff;
+    line-height: 1;
+}
+
+.counter-label {
+    font-size: 9px;
+    color: #7fd4ff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+/* Status Bar */
+.status-bar {
+    position: absolute;
+    bottom: max(15px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    border-radius: 50px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    z-index: 100;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+    animation: glow 2s ease-in-out infinite;
+}
+
+.status-dot.warning {
+    background: #ff8800;
+    box-shadow: 0 0 8px rgba(255, 136, 0, 0.5);
+}
+
+.status-text {
+    font-size: 11px;
+    color: #7fd4ff;
+    font-weight: 500;
+}
+
+.fps-display {
+    font-size: 11px;
+    color: #7fd4ff;
+    padding-left: 12px;
+    border-left: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+#fpsValue {
+    color: #00d4ff;
+    font-weight: 700;
+}
+
+@keyframes glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Loading Screen */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    background: #0a0a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease;
+}
+
+.loading-screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-content {
+    text-align: center;
+    color: #00d4ff;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(0, 212, 255, 0.1);
+    border-top: 3px solid #00d4ff;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    animation: spin 1s linear infinite;
+}
+
+.loading-content p {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.loading-sub {
+    font-size: 12px !important;
+    opacity: 0.6;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .camera-btn { padding: 8px 14px; font-size: 12px; }
+    .camera-btn .btn-text { display: none; }
+    .camera-icon { font-size: 20px; }
+    .camera-info { display: none; }
+    .camera-list { width: 220px; max-height: 250px; }
+    .debug-panel { bottom: 65px; left: 8px; min-width: 150px; max-width: 200px; }
+    #debugContent { font-size: 8px; }
+    .counter-circle { width: 55px; height: 55px; }
+    .counter-number { font-size: 24px; }
+    .notification .icon { font-size: 50px; }
+    .notification .text { font-size: 22px; }
+    .status-bar { padding: 6px 12px; }
+}
+
+@media (max-width: 380px) {
+    .debug-panel { display: none; }
+    .counter-circle { width: 45px; height: 45px; }
+}
