@@ -24,7 +24,6 @@ body {
     height: 100dvh;
 }
 
-/* Camera Selector */
 .camera-selector {
     position: absolute;
     top: max(15px, env(safe-area-inset-top));
@@ -125,7 +124,6 @@ body {
     text-overflow: ellipsis;
 }
 
-/* Camera Info */
 .camera-info {
     position: absolute;
     top: max(15px, env(safe-area-inset-top));
@@ -146,7 +144,6 @@ body {
     text-overflow: ellipsis;
 }
 
-/* Webcam */
 .webcam-container {
     position: relative;
     width: 100%;
@@ -176,7 +173,6 @@ body {
     pointer-events: none;
 }
 
-/* Blur Overlay */
 .blur-overlay {
     position: absolute;
     top: 0;
@@ -232,7 +228,6 @@ body {
     50% { transform: translateY(-8px); }
 }
 
-/* Finger Counter */
 .hand-counter {
     position: absolute;
     top: max(15px, env(safe-area-inset-top));
@@ -281,7 +276,6 @@ body {
     50% { transform: scale(1.08); }
 }
 
-/* Status Bar */
 .status-bar {
     position: absolute;
     bottom: max(15px, env(safe-area-inset-bottom));
@@ -342,7 +336,6 @@ body {
     50% { opacity: 0.4; }
 }
 
-/* Loading Screen */
 .loading-screen {
     position: fixed;
     top: 0;
@@ -394,7 +387,6 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* Mobile */
 @media (max-width: 768px) {
     .camera-btn { padding: 8px 12px; font-size: 12px; }
     .camera-btn .btn-text { display: none; }
